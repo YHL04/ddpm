@@ -8,7 +8,7 @@ import math
 
 class ConvBlock(nn.Module):
     def __init__(self, in_ch, out_ch, time_emb_dim, up=False):
-        super().__init__()
+        super(ConvBlock, self).__init__()
 
         self.time_mlp = nn.Linear(time_emb_dim, out_ch)
         if up:
@@ -34,7 +34,7 @@ class ConvBlock(nn.Module):
         h = h + time_emb
 
         h = self.bn2(self.relu(self.conv2(h)))
-        # Down or Upsample
+        # Down or Up-sample
         return self.transform(h)
 
 
@@ -43,7 +43,7 @@ class PositionalEncoding(nn.Module):
     Sinusoidal Positional Encoding
     """
     def __init__(self, dim):
-        super().__init__()
+        super(PositionalEncoding, self).__init__()
         self.dim = dim
 
     def forward(self, time):
@@ -62,7 +62,7 @@ class Unet(nn.Module):
     """
 
     def __init__(self):
-        super().__init__()
+        super(Unet, self).__init__()
         image_channels = 3
         down_channels = (64, 128, 256, 512, 1024)
         up_channels = (1024, 512, 256, 128, 64)
@@ -78,10 +78,10 @@ class Unet(nn.Module):
 
         self.conv0 = nn.Conv2d(image_channels, down_channels[0], 3, padding=1)
 
-        # Downsample
+        # Down-sample
         self.downs = nn.ModuleList([ConvBlock(down_channels[i], down_channels[i + 1],
                                               time_emb_dim) for i in range(len(down_channels) - 1)])
-        # Upsample
+        # Up-sample
         self.ups = nn.ModuleList([ConvBlock(up_channels[i], up_channels[i + 1],
                                             time_emb_dim, up=True) for i in range(len(up_channels) - 1)])
 
