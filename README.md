@@ -8,6 +8,7 @@ Code modified from different repositories
 ## Results:
 
 
+![alt text](https://github.com/YHL04/ddpm/blob/main/src/diffusionprocess.png)
 
 
 
