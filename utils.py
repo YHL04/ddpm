@@ -5,9 +5,10 @@ import matplotlib.pyplot as plt
 from torchvision import transforms
 
 
-def show_tensor_image(image):
+def show_tensor_image(image, save=None):
     """
     :param image: Tensor[batch_size, channels, height, width]
+    :param save: path to saved file (default = None)
 
     Plots image after applying reverse transformations.
 
@@ -25,3 +26,7 @@ def show_tensor_image(image):
     if len(image.shape) == 4:
         image = image[0, :, :, :]
     plt.imshow(reverse_transforms(image))
+
+    if save is not None:
+        plt.imsave(save, reverse_transforms(image))
+

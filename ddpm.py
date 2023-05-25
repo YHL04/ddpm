@@ -11,17 +11,17 @@ from unet import Unet
 from utils import show_tensor_image
 
 
-def linear_beta_schedule(timesteps):
+def linear_beta_schedule(timesteps, beta_start=0.0001, beta_end=0.02):
     """
     linear schedule, proposed in original ddpm paper
     """
-    beta_start = 0.0001
-    beta_end = 0.02
     return torch.linspace(beta_start, beta_end, timesteps, dtype=torch.float32)
 
 
-def cosine_beta_schedule(timesteps, s=0.008):
+def cosine_beta_schedule(timesteps, s=0.008, beta_start=0.0001, beta_end=0.02):
     """
+    :param s: 0.0008 (default)
+
     cosine schedule
     as proposed in https://openreview.net/forum?id=-NEXDKk8gZ
     """
@@ -30,7 +30,13 @@ def cosine_beta_schedule(timesteps, s=0.008):
     alphas_prod = torch.cos((t + s) / (1 + s) * math.pi * 0.5) ** 2
     alphas_prod = alphas_prod / alphas_prod[0]
     beta = 1 - (alphas_prod[1:] / alphas_prod[:-1])
-    return torch.clip(beta, 0, 0.999)
+    beta = torch.clip(beta, 0, 0.999)
+
+    # to get same scale as linear beta schedule?
+    beta *= 0.02
+    beta += 0.0001
+
+    return beta
 
 
 class DDPM:
@@ -44,7 +50,7 @@ class DDPM:
 
         # model
         self.model = Unet().to(self.device)
-        self.optimizer = Adam(self.model.parameters(), lr=3e-4)
+        self.optimizer = Adam(self.model.parameters(), lr=1e-4)
 
         # plot parameters
         plt.figure(figsize=(15, 15))
@@ -66,10 +72,14 @@ class DDPM:
     @staticmethod
     def get_index_from_list(vals, t, x_shape):
         """
-        :param vals   : Tensor[]
-        :param t      : int
-        :param x_shape: torch.shape
+        :param vals   : Tensor[500]
+        :param t      : Tensor[1]
+        :param x_shape: torch.Size()
+
         :return: output: Tensor[batch_size, 1, 1, 1]
+
+        Obtain value associated with timestep for different precomputed variables
+        and return repeat of value with shape [batch_size, 1, 1, 1]
         """
         batch_size = t.shape[0]
         output = vals.gather(-1, t.cpu())
@@ -78,6 +88,10 @@ class DDPM:
         return output
 
     def get_loss(self, x_0, t):
+        """
+        Perform forward step to get x_t and
+        pass through model to approximate x_noisy
+        """
         x_noisy, noise = self.forward_step(x_0, t)
         noise_pred = self.model(x_noisy, t)
 
@@ -125,6 +139,7 @@ class DDPM:
         model_mean = sqrt(1/alphas) * (x - betas * pred_e / sqrt(1 - alpha_prod))
         variance = sqrt(posterior_variance) * e
 
+        reparameterization trick?
         x_t-1 = model_mean + variance
         """
         betas_t = self.get_index_from_list(self.betas, t, x.shape)
@@ -145,7 +160,7 @@ class DDPM:
             noise = torch.randn_like(x)
             return model_mean + torch.sqrt(posterior_variance_t) * noise
 
-    def plot_denoising_process(self, num_images=10):
+    def plot_denoising_process(self, num_images=10, save=None):
         """
         t = 0 is image
         t = 300 is noise
@@ -159,7 +174,7 @@ class DDPM:
 
             if i % step_size == 0:
                 plt.subplot(1, num_images, int(i/step_size + 1))
-                show_tensor_image(img.detach().cpu())
+                show_tensor_image(img.detach().cpu(), save=save)
 
         plt.pause(0.01)
 

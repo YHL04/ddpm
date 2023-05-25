@@ -6,9 +6,9 @@ from ddpm import DDPM
 from dataset import load_dataset
 
 
-def main(epochs=100, batch_size=128):
+def main(epochs=10000, batch_size=128):
 
-    ddpm = DDPM(T=300, device="cuda")
+    ddpm = DDPM(T=500, device="cuda")
 
     data = load_dataset()
     dataloader = DataLoader(data, batch_size=batch_size, shuffle=True, drop_last=True)
@@ -21,7 +21,7 @@ def main(epochs=100, batch_size=128):
                 print(f"Epoch {epoch} | step {step:03d} Loss: {loss} ")
 
             if step % 100 == 0:
-                ddpm.plot_denoising_process()
+                ddpm.plot_denoising_process(save=f"images/{epoch}_{step}.png")
 
 
 if __name__ == "__main__":
