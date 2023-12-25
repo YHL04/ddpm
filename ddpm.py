@@ -18,39 +18,40 @@ def linear_beta_schedule(timesteps, beta_start=0.0001, beta_end=0.02):
     return torch.linspace(beta_start, beta_end, timesteps, dtype=torch.float32)
 
 
-def cosine_beta_schedule(timesteps, s=0.008, beta_start=0.0001, beta_end=0.02):
+def cosine_beta_schedule(timesteps, s=0.008, beta_max=0.999):
     """
     :param s: 0.0008 (default)
 
     cosine schedule
     as proposed in https://openreview.net/forum?id=-NEXDKk8gZ
+    also refer to https://proceedings.mlr.press/v139/nichol21a/nichol21a.pdf
     """
-    steps = timesteps + 1
-    t = torch.linspace(0, timesteps, steps, dtype=torch.float32) / timesteps
-    alphas_prod = torch.cos((t + s) / (1 + s) * math.pi * 0.5) ** 2
-    alphas_prod = alphas_prod / alphas_prod[0]
-    beta = 1 - (alphas_prod[1:] / alphas_prod[:-1])
-    beta = torch.clip(beta, 0, 0.999)
+    cosine_schedule = lambda t: torch.cos((t + 0.008) / 1.008 * math.pi / 2) ** 2
 
-    # to get same scale as linear beta schedule?
-    beta *= 0.02
-    beta += 0.0001
+    t = torch.linspace(0, timesteps, timesteps+1, dtype=torch.float32) / timesteps
+    t1, t2 = t[:-1], t[1:]
 
-    return beta
+    betas = 1 - cosine_schedule(t2) / cosine_schedule(t1)
+    betas = torch.clip(betas, 0, beta_max)
+
+    return betas
 
 
 class DDPM:
 
-    def __init__(self, T=300, img_size=64, device="cuda"):
+    def __init__(self, T=1000, img_size=64, agg_grad=4, lr=1e-4, device="cuda"):
 
         # general parameters
         self.T = T
         self.img_size = img_size
         self.device = device
 
+        self.agg_grad = agg_grad
+        self.t = 0
+
         # model
         self.model = Unet().to(self.device)
-        self.optimizer = Adam(self.model.parameters(), lr=1e-4)
+        self.optimizer = Adam(self.model.parameters(), lr=lr)
 
         # plot parameters
         plt.figure(figsize=(15, 15))
@@ -69,6 +70,7 @@ class DDPM:
 
         self.posterior_variance = self.betas * (1. - self.alphas_cumprod_prev) / (1. - self.alphas_cumprod)
 
+
     @staticmethod
     def get_index_from_list(vals, t, x_shape):
         """
@@ -76,14 +78,14 @@ class DDPM:
         :param t      : Tensor[1]
         :param x_shape: torch.Size()
 
-        :return: output: Tensor[batch_size, 1, 1, 1]
+        :return: output: Tensor[B, 1, 1, 1]
 
         Obtain value associated with timestep for different precomputed variables
-        and return repeat of value with shape [batch_size, 1, 1, 1]
+        and return repeat of value with shape [B, 1, 1, 1]
         """
-        batch_size = t.shape[0]
+        B = t.shape[0]
         output = vals.gather(-1, t.cpu())
-        output = output.reshape(batch_size, *((1,) * (len(x_shape) - 1))).to(t.device)
+        output = output.reshape(B, *((1,) * (len(x_shape) - 1))).to(t.device)
 
         return output
 
@@ -97,9 +99,26 @@ class DDPM:
 
         return F.l1_loss(noise, noise_pred)
 
+    def train_step(self, batch):
+        B = batch.size(0)
+
+        t = torch.randint(0, self.T, (B,), device=self.device).long()
+        loss = self.get_loss(batch, t) / self.agg_grad
+        loss.backward()
+
+        if self.t % self.agg_grad == 0:
+            self.optimizer.step()
+            self.optimizer.zero_grad()
+
+        self.t += 1
+
+        return loss.item()
+
     @torch.no_grad()
     def forward_step(self, x_0, t):
         """
+        TODO: Math needs verification
+
         forward step to any t from x_0 given by the equation
 
         x_t = sqrt(alpha_prod) * x_0 + sqrt(1 - alpha_prod) * e_0
@@ -118,21 +137,11 @@ class DDPM:
 
         return mean + variance, noise
 
-    def train_step(self, batch):
-        batch_size = batch.size(0)
-
-        self.optimizer.zero_grad()
-
-        t = torch.randint(0, self.T, (batch_size,), device=self.device).long()
-        loss = self.get_loss(batch, t)
-        loss.backward()
-        self.optimizer.step()
-
-        return loss.item()
-
     @torch.no_grad()
     def backward_step(self, x, t):
         """
+        TODO: Needs verification
+
         One denoising step using model mean prediction and precomputed variance
         e = noise with N(0, 1)
 
@@ -152,13 +161,13 @@ class DDPM:
         model_mean = sqrt_recip_alphas_t * (
             x - betas_t * self.model(x, t) / sqrt_one_minus_alphas_cumprod_t
         )
-        posterior_variance_t = self.get_index_from_list(self.posterior_variance, t, x.shape)
 
-        if t == 0:
-            return model_mean
-        else:
-            noise = torch.randn_like(x)
-            return model_mean + torch.sqrt(posterior_variance_t) * noise
+        if t == 0: return model_mean
+
+        posterior_variance_t = self.get_index_from_list(self.posterior_variance, t, x.shape)
+        noise = torch.randn_like(x)
+
+        return model_mean + torch.sqrt(posterior_variance_t) * noise
 
     def plot_denoising_process(self, num_images=10, save=None):
         """
