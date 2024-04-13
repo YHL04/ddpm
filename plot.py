@@ -11,6 +11,8 @@ def read_file(filename):
 
 
 loss = read_file("logs/loss.txt")
+
+plt.yscale("log")
 plt.plot(loss)
 plt.show()
 

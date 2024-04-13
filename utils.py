@@ -14,6 +14,7 @@ def show_tensor_image(image, save=None):
 
     CHW to HWC
     """
+    B, C, H, W = image.shape
 
     reverse_transforms = transforms.Compose([
         transforms.Lambda(lambda t: (t + 1) / 2),
@@ -25,8 +26,12 @@ def show_tensor_image(image, save=None):
 
     if len(image.shape) == 4:
         image = image[0, :, :, :]
-    plt.imshow(reverse_transforms(image))
+
+    image = reverse_transforms(image)
+    image = image.resize((H*2, W*2))
+
+    plt.imshow(image)
 
     if save is not None:
-        plt.imsave(save, reverse_transforms(image))
+        image.save(save)
 

@@ -16,3 +16,13 @@ Code modified from different repositories
 
 
 
+## Improved DDPM Changes
+
+[ ] Learning: Changing loss function and variance formula
+
+[X] Cosine Schedule
+
+[ ] Importance Sampling
+
+[X] Faster Sampling by changing number of timesteps
+

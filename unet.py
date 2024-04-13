@@ -64,8 +64,8 @@ class Unet(nn.Module):
     def __init__(self):
         super(Unet, self).__init__()
         image_channels = 3
-        down_channels = (128, 256, 512, 768, 1024, 2048)
-        up_channels = (2048, 1024, 768, 512, 256, 128)
+        down_channels = (128, 256, 512, 1024, 2048)
+        up_channels = (2048, 1024, 512, 256, 128)
         out_dim = 1
         time_emb_dim = 32
 
@@ -85,7 +85,11 @@ class Unet(nn.Module):
         self.ups = nn.ModuleList([ConvBlock(up_channels[i], up_channels[i + 1],
                                             time_emb_dim, up=True) for i in range(len(up_channels) - 1)])
 
-        self.output = nn.Conv2d(up_channels[-1], 3, out_dim)
+        # Mean
+        self.mean = nn.Conv2d(up_channels[-1], 3, out_dim)
+
+        # Variance
+        self.variance = nn.Conv2d(up_channels[-1], 3, out_dim)
 
     def forward(self, x, timestep):
 
@@ -102,5 +106,5 @@ class Unet(nn.Module):
             residual_x = residual_inputs.pop()
             x = torch.cat((x, residual_x), dim=1)
             x = up(x, t)
-        return self.output(x)
+        return self.mean(x)
 
