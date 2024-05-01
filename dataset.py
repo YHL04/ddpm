@@ -4,7 +4,7 @@ import torchvision
 from torchvision import transforms
 
 
-def load_dataset(img_size=64):
+def load_dataset(img_size=64, device="cuda"):
     """
     Returns data after applying appropriate transformations,
     to work with diffusion models.
@@ -14,7 +14,8 @@ def load_dataset(img_size=64):
         transforms.Resize((img_size, img_size)),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),  # Scales data into [0,1]
-        transforms.Lambda(lambda t: (t * 2) - 1)  # Scale between [-1, 1]
+        transforms.Lambda(lambda t: (t * 2) - 1),  # Scale between [-1, 1]
+        transforms.Lambda(lambda t: t.to(device))
     ])
 
     data = torchvision.datasets.CIFAR100(root=".", download=True,

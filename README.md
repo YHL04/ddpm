@@ -1,12 +1,8 @@
-# Denoising Diffusion Probabilistic Models (DDPM)
+# Denoising Diffusion Probabilistic Models (DDPM) for image generation
 
 A Generative Model that outperform GANs in terms of compute and benchmarks.
 
-Predecessor of many state of the art generative models such as DALLE and Stable Diffusion
-
-Code modified from different repositories
-
-(Not Fixed: Cosine noise schedule worse than linear noise schedule)
+Predecessor of many state of the art generative models such as DALLE and Stable Diffusion.
 
 
 ## Results (50 epochs):
