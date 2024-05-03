@@ -8,7 +8,7 @@ Predecessor of many state of the art generative models such as DALLE and Stable 
 ## Results (50 epochs):
 
 
-![alt text](https://github.com/YHL04/ddpm/blob/main/src/diffusionprocess.png)
+![alt text](https://github.com/YHL04/ddpm/blob/main/images/diffusionprocess.png)
 
 
 
@@ -18,7 +18,11 @@ Predecessor of many state of the art generative models such as DALLE and Stable 
 
 [X] Cosine Schedule
 
+[X] Faster Sampling by changing number of timesteps
+
+[X] Scalable transformer for diffusion
+
 [ ] Importance Sampling
 
-[X] Faster Sampling by changing number of timesteps
+
 
