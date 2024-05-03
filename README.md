@@ -14,7 +14,7 @@ Predecessor of many state of the art generative models such as DALLE and Stable 
 
 ## Improved DDPM Changes
 
-[ ] Learning: Changing loss function and variance formula
+[X] Learning: Changing loss function and variance formula
 
 [X] Cosine Schedule
 
