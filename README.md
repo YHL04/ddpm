@@ -27,7 +27,7 @@ Predecessor of many state of the art generative models such as DALLE and Stable 
 
 ## Citations
 
-```
+```bibtex
 @article{ho2020denoising,
   title={Denoising diffusion probabilistic models},
   author={Ho, Jonathan and Jain, Ajay and Abbeel, Pieter},
@@ -49,7 +49,7 @@ Predecessor of many state of the art generative models such as DALLE and Stable 
 }
 ```
 
-```
+```bibtex
 @inproceedings{peebles2023scalable,
   title={Scalable diffusion models with transformers},
   author={Peebles, William and Xie, Saining},
