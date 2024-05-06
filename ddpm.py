@@ -92,6 +92,9 @@ class DDPM:
         self.mu_term1 = torch.sqrt(self.alphas_cumprod_prev) * self.betas / (1 - self.alphas_cumprod)
         self.mu_term2 = torch.sqrt(self.alphas) * (1 - self.alphas_cumprod_prev) / (1 - self.alphas_cumprod)
 
+        # signal-to-noise ratio
+        self.snr = self.alphas_cumprod / (1 - self.alphas_cumprod)
+
     @staticmethod
     def get_index_from_list(vals, t, x_shape):
         """
@@ -110,7 +113,7 @@ class DDPM:
 
         return output
 
-    def get_loss(self, x_0, c, t):
+    def get_loss(self, x_0, c, t, min_snr=True):
         """
         Perform forward step to get x_t and
         pass through model to approximate x_noisy
@@ -119,18 +122,25 @@ class DDPM:
             x_0: original image
             c: classes of the images
             t: timestep
+            min_snr = loss weighing strategy for efficient training min{SNR(t), gamma}
         """
         B = x_0.size(0)
 
         x_t, noise = self.forward_step(x_0, t)
         e, v = self.model(x_t, c, t)
 
-        loss_simple = self.get_simple(noise, e)
+        loss_simple = self.get_simple(noise, e).view(B, -1).mean(-1)
         loss_vb = self.get_vb(e, v, x_0, x_t, t)
 
-        return loss_simple + self.lambda_ * loss_vb
+        loss = loss_simple + self.lambda_ * loss_vb
 
-    def get_simple(self, noise, e, reduction='mean'):
+        if min_snr:
+            weight = self.get_index_from_list(self.snr, t, loss.shape)
+            loss = loss * weight
+
+        return loss.mean()
+
+    def get_simple(self, noise, e, reduction='none'):
         return F.mse_loss(noise, e, reduction=reduction)
 
     def get_vb(self, e, v, x_0, x_t, t):
@@ -155,7 +165,7 @@ class DDPM:
         decoder_nll = decoder_nll.mean(dim=list(range(1, len(decoder_nll.shape)))) / torch.log(torch.tensor(2.0))
 
         output = torch.where((t==0), decoder_nll, kl)
-        return output.mean()
+        return output
 
     def train_step(self, batch):
         img, cls = batch
