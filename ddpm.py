@@ -113,7 +113,7 @@ class DDPM:
 
         return output
 
-    def get_loss(self, x_0, c, t, min_snr=True):
+    def get_loss(self, x_0, c, t, min_snr=True, gamma=5.):
         """
         Perform forward step to get x_t and
         pass through model to approximate x_noisy
@@ -123,6 +123,7 @@ class DDPM:
             c: classes of the images
             t: timestep
             min_snr = loss weighing strategy for efficient training min{SNR(t), gamma}
+            gamma = gamma constant from min-SNR-gamma paper
         """
         B = x_0.size(0)
 
@@ -135,7 +136,7 @@ class DDPM:
         loss = loss_simple + self.lambda_ * loss_vb
 
         if min_snr:
-            weight = self.get_index_from_list(self.snr, t, loss.shape)
+            weight = torch.minimum(self.get_index_from_list(self.snr, t, loss.shape), torch.tensor(gamma))
             loss = loss * weight
 
         return loss.mean()
