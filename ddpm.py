@@ -122,8 +122,8 @@ class DDPM:
             x_0: original image
             c: classes of the images
             t: timestep
-            min_snr = loss weighing strategy for efficient training min{SNR(t), gamma}
-            gamma = gamma constant from min-SNR-gamma paper
+            min_snr: loss weighing strategy for efficient training min{SNR(t), gamma}
+            gamma: gamma constant from min-SNR-gamma paper
         """
         B = x_0.size(0)
 
